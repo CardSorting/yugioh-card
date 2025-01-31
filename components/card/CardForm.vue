@@ -287,18 +287,7 @@ export default {
         }
       } catch (error) {
         console.error('Error saving card:', error)
-        // Try to show toast if available, otherwise use store error handling
-        if (this.$bvToast) {
-          this.$bvToast.toast('Failed to save card. Please try again.', {
-            title: 'Error',
-            variant: 'danger',
-            solid: true
-          })
-        } else {
-          this.$store.dispatch('handleError', {
-            message: 'Failed to save card. Please try again.'
-          })
-        }
+        this.$store.dispatch('handleError', 'Failed to save card. Please try again.');
       } finally {
         this.isSaving = false
       }

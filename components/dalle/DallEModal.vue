@@ -107,12 +107,15 @@ export default {
       }
     },
 
+    ...mapActions(['handleError']),
+    
     async onSubmit(prompt) {
       try {
         await this.generateImage(prompt);
         this.retryCount = 0;
       } catch (error) {
         console.error('Error in component:', error);
+        this.handleError(error);
         this.retryCount++;
       }
     },
@@ -137,11 +140,7 @@ export default {
         await this.$bvModal.hide('dalle-modal');
       } catch (error) {
         console.error('Error processing image:', error);
-        this.$bvToast?.toast('Error saving image. Please try again.', {
-          title: 'Error',
-          variant: 'danger',
-          solid: true
-        });
+        this.handleError('Error saving image. Please try again.');
       }
     },
 

@@ -33,9 +33,8 @@
 </template>
 
 <script>
-import { mapState, mapMutations } from 'vuex';
+import { mapState } from 'vuex';
 import DallEModal from '../dalle/DallEModal.vue';
-import supabaseStorageService from '../../services/storage/supabaseService';
 
 export default {
   name: 'CardImageUpload',
@@ -58,29 +57,15 @@ export default {
   },
 
   methods: {
-    ...mapMutations('card', ['SET_CARD_IMAGE']),
-
     async handleFileInput(file) {
-      if (file) {
-        try {
-          // Upload to Supabase and get permanent URL
-          const uniqueFilename = supabaseStorageService.generateUniqueFilename(file.name);
-          const publicUrl = await supabaseStorageService.uploadFile(file, uniqueFilename);
-          
-          // Create a new File object with the public URL
-          const response = await fetch(publicUrl);
-          const blob = await response.blob();
-          const newFile = new File([blob], file.name, { type: file.type });
-          this.selectedFile = newFile;
-          this.SET_CARD_IMAGE(newFile);
-        } catch (error) {
-          console.error('Error uploading image:', error);
-          this.$bvToast.toast('Error uploading image. Please try again.', {
-            title: 'Error',
-            variant: 'danger',
-            solid: true
-          });
-        }
+      if (!file) return;
+      
+      try {
+        this.selectedFile = file;
+        await this.$cardImageService.handleLocalImage(file);
+      } catch (error) {
+        console.error('Error handling file input:', error);
+        this.$store.dispatch('handleError', 'Error uploading image. Please try again.');
       }
     },
 
@@ -89,11 +74,7 @@ export default {
         await this.$showModal('dalle-modal');
       } catch (error) {
         console.error('Error showing DallE modal:', error);
-        this.$bvToast?.toast('Error opening AI image generator. Please try again.', {
-          title: 'Error',
-          variant: 'danger',
-          solid: true
-        });
+        this.$store.dispatch('handleError', 'Error opening AI image generator. Please try again.');
       }
     },
 
@@ -102,19 +83,11 @@ export default {
       
       try {
         this.selectedFile = file;
-        // Store both the file and the generation data
-        this.SET_CARD_IMAGE({
-          file,
-          generation // This will be used when saving the card
-        });
+        await this.$cardImageService.handleDallEImage(file, generation);
         await this.$hideModal('dalle-modal');
       } catch (error) {
         console.error('Error handling DallE image:', error);
-        this.$bvToast?.toast('Error processing AI generated image. Please try again.', {
-          title: 'Error',
-          variant: 'danger',
-          solid: true
-        });
+        this.$store.dispatch('handleError', 'Error processing AI generated image. Please try again.');
       }
     }
   }

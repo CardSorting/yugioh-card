@@ -20,7 +20,17 @@ export const mutations = {
   }
 };
 
-export const actions = {};
+export const actions = {
+  handleError({ commit }, error) {
+    const errorMessage = error?.message || error || 'An error occurred';
+    commit('setError', errorMessage);
+    
+    // Clear error after 5 seconds
+    setTimeout(() => {
+      commit('clearError');
+    }, 5000);
+  }
+};
 
 export const modules = {
   dalle

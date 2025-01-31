@@ -43,7 +43,8 @@ export default {
     '~/plugins/regenerator',
     '~/plugins/auth',
     '~/plugins/deck-services',
-    '~/plugins/card-drawing'
+    '~/plugins/card-drawing',
+    '~/plugins/card-image-service'
   ],
 
   // Router middleware
