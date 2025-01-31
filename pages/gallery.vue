@@ -1,7 +1,11 @@
 <template>
   <div class="gallery-page">
     <main class="container mt-5 pt-5">
-      <div v-if="isAuthenticated">
+      <div v-if="!auth.isReady" class="text-center py-5">
+        <b-spinner label="Loading..."></b-spinner>
+      </div>
+      
+      <div v-else-if="auth.isAuthenticated">
         <h1 class="mb-4">My Card Gallery</h1>
         
         <div v-if="loading" class="text-center py-5">
@@ -55,10 +59,12 @@
 </template>
 
 <script>
-import { mapGetters } from 'vuex'
-import AuthModal from '~/components/auth/AuthModal.vue'
-import UserMenu from '~/components/auth/UserMenu.vue'
-import { supabase } from '~/config/supabase'
+import { useAuth } from '~/composables/useAuth';
+import { useRoute } from 'vue-router';
+import { computed } from 'vue';
+import AuthModal from '~/components/auth/AuthModal.vue';
+import UserMenu from '~/components/auth/UserMenu.vue';
+import { supabase } from '~/config/supabase';
 
 export default {
   name: 'GalleryPage',
@@ -81,12 +87,14 @@ export default {
     }
   },
 
-  computed: {
-    ...mapGetters('auth', ['isAuthenticated', 'currentUser']),
+  setup() {
+    const auth = useAuth();
+    const route = useRoute();
     
-    highlightCard() {
-      return this.$route.query.highlight
-    }
+    return {
+      auth,
+      highlightCard: computed(() => route.query.highlight)
+    };
   },
 
   watch: {
@@ -124,7 +132,7 @@ export default {
   },
 
   async mounted() {
-    if (this.isAuthenticated) {
+    if (this.auth.isAuthenticated.value) {
       await this.loadCards()
     }
   },
@@ -136,7 +144,7 @@ export default {
         const { data, error } = await supabase
           .from('saved_cards')
           .select('*')
-          .eq('user_id', this.currentUser.id)
+          .eq('user_id', this.auth.user.value.id)
           .order('created_at', { ascending: false })
 
         if (error) throw error
@@ -166,13 +174,13 @@ export default {
           .from('saved_cards')
           .delete()
           .eq('id', this.selectedCard.id)
-          .eq('user_id', this.currentUser.id)
+          .eq('user_id', this.auth.user.value.id)
 
         if (error) throw error
 
         const { error: storageError } = await supabase.storage
           .from('card-images')
-          .remove([`${this.currentUser.id}/${this.selectedCard.id}.jpg`])
+          .remove([`${this.auth.user.value.id}/${this.selectedCard.id}.jpg`])
 
         if (storageError) console.error('Storage cleanup error:', storageError)
 

@@ -1,24 +1,26 @@
-import supabaseStorageService from '../storage/supabaseService';
 import { createClient } from '@supabase/supabase-js';
+import { IDalleStorageService, Generation, GenerationOptions } from './interfaces/IDalleService';
+import { authStateManager } from '../auth/AuthStateManager';
 
 /**
  * Service for managing DALL-E generation storage and database records
  */
-export class DalleStorageService {
+export class DalleStorageService implements IDalleStorageService {
+  private supabase;
+  private bucket: string;
+
   constructor() {
     this.supabase = createClient(
-      process.env.SUPABASE_URL,
-      process.env.SUPABASE_ANON_KEY
+      process.env.SUPABASE_URL || '',
+      process.env.SUPABASE_ANON_KEY || ''
     );
     this.bucket = 'dalle-generations';
   }
 
   /**
    * Generate a unique filename for a DALL-E generation
-   * @param {string} userId - The user's ID
-   * @returns {string} The unique filename
    */
-  generateFilename(userId) {
+  private generateFilename(userId: string): string {
     const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
     const random = Math.random().toString(36).substring(2, 15);
     return `${userId}/${timestamp}-${random}.png`;
@@ -26,17 +28,13 @@ export class DalleStorageService {
 
   /**
    * Save a DALL-E generation to storage and database
-   * @param {string} base64Data - The base64 image data
-   * @param {string} prompt - The prompt used to generate the image
-   * @param {string} userId - The user's ID
-   * @returns {Promise<Object>} The saved generation record
    */
-  async saveGeneration(base64Data, prompt, userId) {
+  async saveGeneration(base64Data: string, prompt: string, userId: string): Promise<Generation> {
     try {
       // Convert base64 to file
       const base64Content = base64Data.replace(/^data:image\/\w+;base64,/, '');
       const byteCharacters = atob(base64Content);
-      const byteArrays = [];
+      const byteArrays: Uint8Array[] = [];
       
       for (let offset = 0; offset < byteCharacters.length; offset += 512) {
         const slice = byteCharacters.slice(offset, offset + 512);
@@ -93,11 +91,8 @@ export class DalleStorageService {
 
   /**
    * Mark a generation as used in a card
-   * @param {string} generationId - The generation's ID
-   * @param {string} cardId - The card's ID
-   * @returns {Promise<Object>} The updated generation record
    */
-  async markAsUsed(generationId, cardId) {
+  async markAsUsed(generationId: string, cardId: string): Promise<Generation> {
     try {
       const { data, error } = await this.supabase
         .from('dalle_generations')
@@ -119,13 +114,8 @@ export class DalleStorageService {
 
   /**
    * Get all generations for a user
-   * @param {string} userId - The user's ID
-   * @param {Object} options - Query options
-   * @param {boolean} [options.unusedOnly=false] - Only return unused generations
-   * @param {number} [options.limit=20] - Maximum number of records to return
-   * @returns {Promise<Array>} Array of generation records
    */
-  async getUserGenerations(userId, { unusedOnly = false, limit = 20 } = {}) {
+  async getUserGenerations(userId: string, { unusedOnly = false, limit = 20 }: GenerationOptions = {}): Promise<Generation[]> {
     try {
       let query = this.supabase
         .from('dalle_generations')

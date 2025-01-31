@@ -32,7 +32,9 @@
 </template>
 
 <script>
-import { mapState, mapActions, mapGetters } from 'vuex';
+import { mapState, mapActions } from 'vuex';
+import { useAuth } from '~/composables/useAuth';
+import { ref, computed, onMounted, onBeforeUnmount } from 'vue';
 import DallEForm from './DallEForm.vue';
 import DallEPreview from './DallEPreview.vue';
 
@@ -44,42 +46,50 @@ export default {
     DallEPreview
   },
 
-  data() {
+  setup(props, { emit, root }) {
+    const auth = useAuth();
+    const retryCount = ref(0);
+    const modal = ref(null);
+    const form = ref(null);
+    let showHandler = null;
+
+    const generations = computed(() => root.$store.state.dalle.generations || []);
+    const currentGeneration = computed(() => generations.value[0] || null);
+    const generatedImage = computed(() => currentGeneration.value?.base64Data || null);
+
+    onMounted(() => {
+      // Listen for global show event
+      showHandler = (modalId) => {
+        if (modalId === 'dalle-modal' && modal.value) {
+          modal.value.show();
+        }
+      };
+      root.$on('bv::show::modal', showHandler);
+    });
+
+    onBeforeUnmount(() => {
+      // Clean up event listeners
+      if (showHandler) {
+        root.$off('bv::show::modal', showHandler);
+      }
+    });
+
     return {
-      retryCount: 0
-    }
+      auth,
+      retryCount,
+      modal,
+      form,
+      generations,
+      currentGeneration,
+      generatedImage
+    };
   },
 
   computed: {
     ...mapState({
       loading: state => state.dalle.loading,
       error: state => state.dalle.error
-    }),
-    ...mapState('dalle', ['generations']),
-    ...mapGetters('dalle', ['unusedGenerations']),
-    currentGeneration() {
-      return this.generations?.[0] || null;
-    },
-    generatedImage() {
-      return this.currentGeneration?.base64Data || null;
-    }
-  },
-
-  mounted() {
-    // Listen for global show event
-    this.showHandler = (modalId) => {
-      if (modalId === 'dalle-modal' && this.$refs.modal) {
-        this.$refs.modal.show();
-      }
-    };
-    this.$root.$on('bv::show::modal', this.showHandler);
-  },
-
-  beforeDestroy() {
-    // Clean up event listeners
-    if (this.showHandler) {
-      this.$root.$off('bv::show::modal', this.showHandler);
-    }
+    })
   },
 
   methods: {
@@ -93,6 +103,13 @@ export default {
       console.log('DallE modal showing');
       this.retryCount = 0;
       
+      if (!this.auth.isAuthenticated.value) {
+        console.log('User not authenticated');
+        this.$bvModal.hide('dalle-modal');
+        this.$emit('auth-required');
+        return;
+      }
+
       try {
         // Load any unused generations
         await this.fetchGenerations({ unusedOnly: true, limit: 10 });
@@ -100,9 +117,9 @@ export default {
         console.error('Error fetching generations:', error);
       }
       
-      if (this.$refs.form) {
+      if (this.form) {
         this.$nextTick(() => {
-          this.$refs.form.reset();
+          this.form.reset();
         });
       }
     },
@@ -110,13 +127,24 @@ export default {
     ...mapActions(['handleError']),
     
     async onSubmit(prompt) {
+      if (!this.auth.isAuthenticated.value) {
+        this.$bvModal.hide('dalle-modal');
+        this.$emit('auth-required');
+        return;
+      }
+
       try {
         await this.generateImage(prompt);
         this.retryCount = 0;
       } catch (error) {
         console.error('Error in component:', error);
-        this.handleError(error);
-        this.retryCount++;
+        if (error.message.includes('not authenticated')) {
+          this.$bvModal.hide('dalle-modal');
+          this.$emit('auth-required');
+        } else {
+          this.handleError(error);
+          this.retryCount++;
+        }
       }
     },
 
@@ -152,9 +180,9 @@ export default {
       this.retryCount = 0;
       this.$store.dispatch('dalle/resetState');
       
-      if (this.$refs.form) {
+      if (this.form) {
         this.$nextTick(() => {
-          this.$refs.form.reset();
+          this.form.reset();
         });
       }
     }

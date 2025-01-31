@@ -1,34 +1,43 @@
-import { createClient } from '@supabase/supabase-js';
+import { IDalleService, GenerationResult, GenerationOptions, Generation } from './interfaces/IDalleService';
+import { authStateManager } from '../auth/AuthStateManager';
 import dalleStorageService from './dalleStorageService';
 
-/**
- * Service for handling DALL-E and GPT-4 Vision API interactions
- */
-export class DalleService {
-  constructor(apiKey = process.env.OPENAI_API_KEY) {
+export class DalleService implements IDalleService {
+  private apiKey: string;
+  private dalleEndpoint: string;
+  private chatEndpoint: string;
+
+  constructor(apiKey: string = process.env.OPENAI_API_KEY || '') {
     this.apiKey = apiKey;
     this.dalleEndpoint = 'https://api.openai.com/v1/images/generations';
     this.chatEndpoint = 'https://api.openai.com/v1/chat/completions';
-    this.supabase = createClient(
-      process.env.SUPABASE_URL,
-      process.env.SUPABASE_ANON_KEY
-    );
+  }
+
+  /**
+   * Ensure user is authenticated before proceeding
+   */
+  private ensureAuthenticated(): void {
+    const authState = authStateManager.getAuthState();
+    if (!authState.initialized) {
+      throw new Error('Auth state not initialized');
+    }
+    if (!authState.user) {
+      throw new Error('User not authenticated');
+    }
   }
 
   /**
    * Generate an image using DALL-E API and save it
-   * @param {string} prompt - The image description
-   * @returns {Promise<Object>} The generation record including the image URL
    */
-  async generateImage(prompt) {
+  async generateImage(prompt: string): Promise<GenerationResult> {
     if (!prompt) {
       throw new Error('Prompt is required');
     }
 
     try {
-      // Get current user
-      const { data: { user }, error: userError } = await this.supabase.auth.getUser();
-      if (userError) throw new Error('User not authenticated');
+      this.ensureAuthenticated();
+      const authState = authStateManager.getAuthState();
+      const userId = authState.user!.id;
 
       // Generate image
       const response = await fetch(this.dalleEndpoint, {
@@ -63,12 +72,12 @@ export class DalleService {
       const savedGeneration = await dalleStorageService.saveGeneration(
         base64Data,
         prompt,
-        user.id
+        userId
       );
 
       return {
         ...savedGeneration,
-        base64Data // Include base64 data for immediate use
+        base64Data
       };
     } catch (error) {
       console.error('DALL-E API error:', error);
@@ -78,33 +87,30 @@ export class DalleService {
 
   /**
    * Mark a generation as used in a card
-   * @param {string} generationId - The generation's ID
-   * @param {string} cardId - The card's ID
    */
-  async markGenerationAsUsed(generationId, cardId) {
-    return dalleStorageService.markAsUsed(generationId, cardId);
+  async markGenerationAsUsed(generationId: string, cardId: string): Promise<void> {
+    this.ensureAuthenticated();
+    await dalleStorageService.markAsUsed(generationId, cardId);
   }
 
   /**
    * Get user's DALL-E generations
-   * @param {Object} options - Query options
    */
-  async getUserGenerations(options) {
-    const { data: { user }, error: userError } = await this.supabase.auth.getUser();
-    if (userError) throw new Error('User not authenticated');
-
-    return dalleStorageService.getUserGenerations(user.id, options);
+  async getUserGenerations(options: GenerationOptions): Promise<Generation[]> {
+    this.ensureAuthenticated();
+    const authState = authStateManager.getAuthState();
+    return dalleStorageService.getUserGenerations(authState.user!.id, options);
   }
 
   /**
    * Analyze an image using GPT-4 Vision API
-   * @param {string} imageData - Base64 encoded image or image URL
-   * @returns {Promise<string>} The image description
    */
-  async analyzeImage(imageData) {
+  async analyzeImage(imageData: string): Promise<string> {
     if (!imageData) {
       throw new Error('Image data is required');
     }
+
+    this.ensureAuthenticated();
 
     const isBase64 = imageData.startsWith('data:');
     const imageUrl = isBase64 ? imageData : imageData;

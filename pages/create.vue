@@ -1,7 +1,11 @@
 <template>
   <div id="app">
+    <div v-if="!auth.isReady" class="container-fluid mt-5 pt-5 text-center">
+      <b-spinner label="Loading..."></b-spinner>
+    </div>
+
     <!-- Main Content -->
-    <main class="container-fluid mt-5 mb-3 h-100 py-3 py-md-5 px-0 px-sm-5">
+    <main v-else class="container-fluid mt-5 mb-3 h-100 py-3 py-md-5 px-0 px-sm-5">
       <b-row class="h-100 justify-content-center align-content-center">
         <!-- Card Preview -->
         <b-col id="card-panel" cols="12" md="6" lg="4" class="mt-3 mt-sm-5 mt-md-0">
@@ -49,13 +53,15 @@
 </template>
 
 <script>
-import { mapState, mapMutations, mapActions, mapGetters } from 'vuex'
-import CardPreview from '~/components/card/CardPreview.vue'
-import CardForm from '~/components/card/CardForm.vue'
-import ErrorDisplay from '~/components/ErrorDisplay.vue'
-import UserMenu from '~/components/auth/UserMenu.vue'
-import AuthModal from '~/components/auth/AuthModal.vue'
-import CardManager from '~/services/cardManager'
+import { useAuth } from '~/composables/useAuth';
+import { ref, onMounted, onBeforeUnmount } from 'vue';
+import { mapState, mapMutations, mapActions } from 'vuex';
+import CardPreview from '~/components/card/CardPreview.vue';
+import CardForm from '~/components/card/CardForm.vue';
+import ErrorDisplay from '~/components/ErrorDisplay.vue';
+import UserMenu from '~/components/auth/UserMenu.vue';
+import AuthModal from '~/components/auth/AuthModal.vue';
+import CardManager from '~/services/cardManager';
 
 export default {
   middleware: 'auth',
@@ -67,41 +73,57 @@ export default {
     AuthModal
   },
 
-  data() {
+  setup() {
+    const auth = useAuth();
+    const pageScrolling = ref(0);
+    const cardManager = ref(new CardManager());
+    const showAuthModal = ref(false);
+
+    const onScroll = () => {
+      pageScrolling.value = window.pageYOffset || document.documentElement.scrollTop;
+    };
+
+    onMounted(() => {
+      window.addEventListener('scroll', onScroll);
+    });
+
+    onBeforeUnmount(() => {
+      window.removeEventListener('scroll', onScroll);
+    });
+
     return {
-      pageScrolling: 0,
-      cardManager: new CardManager(),
-      showAuthModal: false
-    }
+      auth,
+      pageScrolling,
+      cardManager,
+      showAuthModal
+    };
   },
 
   computed: {
     ...mapState({
       cardState: state => state.card
-    }),
-    ...mapGetters('auth', ['isAuthenticated', 'currentUser'])
+    })
   },
 
   watch: {
     cardState: {
       deep: true,
       handler() {
-        this.drawCard()
+        this.drawCard();
+      }
+    },
+    'auth.isReady': {
+      immediate: true,
+      handler(isReady) {
+        if (isReady) {
+          this.initializeCard();
+        }
       }
     }
   },
 
   async created() {
-    await this.resetToDefault()
-  },
-
-  async mounted() {
-    window.addEventListener('scroll', this.onScroll)
-    await this.initializeCard()
-  },
-
-  beforeDestroy() {
-    window.removeEventListener('scroll', this.onScroll)
+    await this.resetToDefault();
   },
 
   methods: {
@@ -112,39 +134,44 @@ export default {
     }),
 
     async initializeCard() {
-      this.fireLoadingDialog()
-      this.clearError()
+      if (!this.auth.isAuthenticated.value) {
+        this.showAuthModal = true;
+        return;
+      }
+
+      this.fireLoadingDialog();
+      this.clearError();
       try {
-        console.log('Initializing card in create.vue')
+        console.log('Initializing card in create.vue');
         
         // Ensure CardPreview component exists
         if (!this.$refs.cardPreview) {
-          throw new Error('CardPreview component not found')
+          throw new Error('CardPreview component not found');
         }
 
         // Wait for CardPreview to be ready and get canvas
-        console.log('Waiting for CardPreview canvas...')
-        const canvas = await this.$refs.cardPreview.waitForCanvas()
-        console.log('Canvas is ready from CardPreview')
+        console.log('Waiting for CardPreview canvas...');
+        const canvas = await this.$refs.cardPreview.waitForCanvas();
+        console.log('Canvas is ready from CardPreview');
         
         if (!canvas) {
-          throw new Error('Canvas not found in CardPreview')
+          throw new Error('Canvas not found in CardPreview');
         }
 
         // Initialize card manager with ready canvas
-        console.log('Initializing CardManager...')
-        await this.cardManager.initialize(canvas)
-        console.log('CardManager initialized successfully')
+        console.log('Initializing CardManager...');
+        await this.cardManager.initialize(canvas);
+        console.log('CardManager initialized successfully');
         
         // Perform initial card draw
-        console.log('Performing initial card draw...')
-        await this.drawCard()
-        console.log('Initial card draw completed successfully')
+        console.log('Performing initial card draw...');
+        await this.drawCard();
+        console.log('Initial card draw completed successfully');
       } catch (error) {
-        console.error('Failed to initialize card:', error)
-        this.handleError(error)
+        console.error('Failed to initialize card:', error);
+        this.handleError(error);
       } finally {
-        this.closeLoadingDialog()
+        this.closeLoadingDialog();
       }
     },
 

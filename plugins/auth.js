@@ -1,28 +1,33 @@
-export default async function ({ store, app }) {
+import { authStateManager } from '~/services/auth/AuthStateManager';
+import { supabase } from '~/config/supabase';
+
+export default async function ({ app }) {
+  // Initialize auth state on app startup
+  if (!authStateManager.isInitialized()) {
+    await authStateManager.initializeState();
+  }
+
   // Inject $auth
   app.$auth = {
-    user: () => store.state.auth.user
-  }
+    user: () => authStateManager.getAuthState().user
+  };
+
   // Inject into Vue instance
-  if (!app.mixins) app.mixins = []
+  if (!app.mixins) app.mixins = [];
   app.mixins.push({
     computed: {
       $auth() {
-        return app.$auth
+        return app.$auth;
       }
     }
-  })
-
-  // Initialize auth state on app startup
-  await store.dispatch('auth/initAuth')
+  });
 
   // Listen for auth state changes
-  const { supabase } = await import('~/config/supabase')
   supabase.auth.onAuthStateChange((event, session) => {
     if (event === 'SIGNED_IN') {
-      store.commit('auth/SET_USER', session.user)
+      authStateManager.setUser(session.user);
     } else if (event === 'SIGNED_OUT') {
-      store.commit('auth/SET_USER', null)
+      authStateManager.setUser(null);
     }
-  })
+  });
 }
