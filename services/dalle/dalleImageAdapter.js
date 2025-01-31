@@ -6,26 +6,37 @@ import supabaseStorageService from '../storage/supabaseService';
  */
 export class DalleImageAdapter {
   /**
-   * Convert a URL to a File object
-   * @param {string} imageUrl - The URL of the image
+   * Convert base64 data to a File object
+   * @param {string} base64Data - The base64 image data (with data URI scheme)
    * @param {string} [filename='dalle-generated.png'] - The desired filename
    * @returns {Promise<File>} A File object containing the image
    */
-  async urlToFile(imageUrl, filename = DALLE_CONSTANTS.DEFAULT_FILENAME) {
+  async base64ToFile(base64Data, filename = DALLE_CONSTANTS.DEFAULT_FILENAME) {
     try {
-      // Use proxy endpoint to avoid CORS issues
-      const proxyUrl = `/api/dalle/proxy?url=${encodeURIComponent(imageUrl)}`;
-      const response = await fetch(proxyUrl);
+      // Remove data URI scheme if present
+      const base64Content = base64Data.replace(/^data:image\/\w+;base64,/, '');
       
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
+      // Convert base64 to binary
+      const byteCharacters = atob(base64Content);
+      const byteArrays = [];
+      
+      for (let offset = 0; offset < byteCharacters.length; offset += 512) {
+        const slice = byteCharacters.slice(offset, offset + 512);
+        const byteNumbers = new Array(slice.length);
+        
+        for (let i = 0; i < slice.length; i++) {
+          byteNumbers[i] = slice.charCodeAt(i);
+        }
+        
+        const byteArray = new Uint8Array(byteNumbers);
+        byteArrays.push(byteArray);
       }
       
-      const blob = await response.blob();
+      const blob = new Blob(byteArrays, { type: DALLE_CONSTANTS.MIME_TYPE });
       return new File([blob], filename, { type: DALLE_CONSTANTS.MIME_TYPE });
     } catch (error) {
-      console.error('Error converting image URL to File:', error);
-      throw new Error('Failed to convert image URL to File');
+      console.error('Error converting base64 to File:', error);
+      throw new Error('Failed to convert image data to File');
     }
   }
 
@@ -63,12 +74,12 @@ export class DalleImageAdapter {
 
   /**
    * Process an image from DALL-E for use in the card maker
-   * @param {string} imageUrl - The DALL-E generated image URL
+   * @param {string} base64Data - The DALL-E generated image as base64 data
    * @returns {Promise<File>} A processed image file ready for use
    */
-  async processForCardMaker(imageUrl) {
-    // Convert DALL-E URL to File
-    const file = await this.urlToFile(imageUrl);
+  async processForCardMaker(base64Data) {
+    // Convert base64 data to File
+    const file = await this.base64ToFile(base64Data);
     await this.validateImage(file);
 
     // Upload to storage and get permanent URL

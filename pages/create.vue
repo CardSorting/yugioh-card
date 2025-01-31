@@ -93,11 +93,11 @@ export default {
 
   async created() {
     await this.resetToDefault()
-    await this.initializeCard()
   },
 
   async mounted() {
     window.addEventListener('scroll', this.onScroll)
+    await this.initializeCard()
   },
 
   beforeDestroy() {
@@ -116,8 +116,10 @@ export default {
       this.clearError()
       try {
         console.log('Initializing card in create.vue')
-        const canvas = this.$refs.cardPreview?.getCanvas()
-        console.log('Got canvas from CardPreview:', canvas ? 'Canvas found' : 'Canvas not found')
+        
+        // Wait for CardPreview to be ready and get canvas
+        const canvas = await this.$refs.cardPreview?.waitForCanvas()
+        console.log('Canvas is ready from CardPreview')
         
         if (!canvas) {
           throw new Error('Canvas not found in CardPreview')
@@ -126,8 +128,6 @@ export default {
         await this.cardManager.initialize(canvas)
         console.log('CardManager initialized')
         
-        // Wait for next tick to ensure DOM is updated
-        await this.$nextTick()
         await this.drawCard()
         console.log('Initial card draw completed')
       } catch (error) {
@@ -150,12 +150,12 @@ export default {
         return;
       }
 
-      if (!this.$refs.cardPreview?.getCanvas()) {
-        console.error('Canvas not found in CardPreview')
-        return;
-      }
-      
       try {
+        const canvas = await this.$refs.cardPreview?.waitForCanvas()
+        if (!canvas) {
+          throw new Error('Canvas not found in CardPreview')
+        }
+
         console.log('Drawing card with state:', {
           cardLang: this.cardState.cardLang,
           cardType: this.cardState.cardType,
@@ -171,9 +171,12 @@ export default {
       }
     },
 
-    downloadCard() {
+    async downloadCard() {
       try {
-        const canvas = this.$refs.cardPreview.getCanvas()
+        const canvas = await this.$refs.cardPreview?.waitForCanvas()
+        if (!canvas) {
+          throw new Error('Canvas not found in CardPreview')
+        }
         this.cardManager.downloadCard(canvas)
       } catch (error) {
         this.handleError(error)

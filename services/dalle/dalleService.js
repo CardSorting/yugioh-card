@@ -31,6 +31,7 @@ export class DalleService {
           size: '1792x1024',
           model: 'dall-e-3',
           quality: "hd",
+          response_format: 'b64_json'
         })
       });
 
@@ -40,11 +41,11 @@ export class DalleService {
         throw new Error(data.error?.message || 'Failed to generate image');
       }
 
-      if (!data.data?.[0]?.url) {
-        throw new Error('No image URL in response');
+      if (!data.data?.[0]?.b64_json) {
+        throw new Error('No image data in response');
       }
 
-      return data.data[0].url;
+      return `data:image/png;base64,${data.data[0].b64_json}`;
     } catch (error) {
       console.error('DALL-E API error:', error);
       throw error;

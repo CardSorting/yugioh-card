@@ -20,7 +20,9 @@ export default {
   data() {
     return {
       effectsService: null,
-      canvasInitialized: false
+      canvasInitialized: false,
+      canvasReady: false,
+      initializationPromise: null
     }
   },
 
@@ -30,27 +32,44 @@ export default {
     }
   },
 
+  created() {
+    // Create a promise that will resolve when the canvas is ready
+    this.initializationPromise = new Promise((resolve, reject) => {
+      this._resolveCanvas = resolve;
+      this._rejectCanvas = reject;
+    });
+  },
+
   async mounted() {
     try {
-      console.log('CardPreview mounted, initializing services')
+      console.log('CardPreview mounted, initializing services');
       
       // Initialize effects service
-      this.effectsService = new PreviewEffectsService(this.$refs["yugiohcard-wrap"])
+      this.effectsService = new PreviewEffectsService(this.$refs["yugiohcard-wrap"]);
       
       // Initialize canvas
-      const canvas = this.getCanvas()
+      const canvas = this.getCanvas();
       if (!canvas) {
-        throw new Error('Canvas element not found')
+        throw new Error('Canvas element not found');
       }
 
       // Initialize card drawing service
-      await this.$cardDrawingService.initialize(canvas)
-      this.canvasInitialized = true
+      await this.$cardDrawingService.initialize(canvas);
+      this.canvasInitialized = true;
+      this.canvasReady = true;
       
-      console.log('CardPreview initialization complete')
+      console.log('CardPreview initialization complete');
+      this._resolveCanvas(canvas);
     } catch (error) {
-      console.error('Error initializing CardPreview:', error)
-      this.$store.commit('setError', 'Failed to initialize card preview')
+      console.error('Error initializing CardPreview:', error);
+      this.$store.commit('setError', 'Failed to initialize card preview');
+      this._rejectCanvas(error);
+    }
+  },
+
+  beforeDestroy() {
+    if (!this.canvasReady && this._rejectCanvas) {
+      this._rejectCanvas(new Error('Component destroyed before canvas was ready'));
     }
   },
 
@@ -64,12 +83,24 @@ export default {
     },
 
     getCanvas() {
-      const canvas = this.$refs.yugiohcard
-      console.log('CardPreview.getCanvas called:', canvas ? 'Canvas found' : 'Canvas not found')
+      const canvas = this.$refs.yugiohcard;
+      console.log('CardPreview.getCanvas called:', canvas ? 'Canvas found' : 'Canvas not found');
       if (!canvas) {
-        console.error('Canvas element not found in CardPreview')
+        console.error('Canvas element not found in CardPreview');
       }
-      return canvas
+      return canvas;
+    },
+
+    async waitForCanvas() {
+      console.log('Waiting for canvas to be ready...');
+      try {
+        const canvas = await this.initializationPromise;
+        console.log('Canvas is ready');
+        return canvas;
+      } catch (error) {
+        console.error('Error waiting for canvas:', error);
+        throw error;
+      }
     },
 
     async reinitializeCanvas() {

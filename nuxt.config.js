@@ -187,7 +187,6 @@ export default {
 
   // Server middleware for API routes
   serverMiddleware: [
-    { path: '/api/dalle', handler: '~/api/dalle/generate.js' },
-    { path: '/api/dalle/proxy', handler: '~/api/dalle/proxy.js' }
+    { path: '/api/dalle', handler: '~/api/dalle/generate.js' }
   ]
 }

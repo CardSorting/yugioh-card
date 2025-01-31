@@ -124,7 +124,7 @@ export class CardDrawingService {
     console.log('Drawing card with data:', { cardData, langStr })
     if (!this.canvas || !this.ctx) {
       console.error('Canvas or context is null in drawCard')
-      return
+      throw new Error('Canvas not properly initialized. Please try refreshing the page.')
     }
 
     const offset = langStr._offset
