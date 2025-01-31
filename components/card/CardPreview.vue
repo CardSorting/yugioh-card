@@ -42,19 +42,29 @@ export default {
 
   async mounted() {
     try {
-      console.log('CardPreview mounted, initializing services');
+      console.log('CardPreview mounted, starting initialization');
       
       // Initialize effects service
+      console.log('Initializing effects service...');
       this.effectsService = new PreviewEffectsService(this.$refs["yugiohcard-wrap"]);
       
-      // Initialize canvas
+      // Get canvas element
+      console.log('Getting canvas element...');
       const canvas = this.getCanvas();
       if (!canvas) {
         throw new Error('Canvas element not found');
       }
 
+      // Set canvas dimensions
+      console.log('Setting canvas dimensions...');
+      canvas.width = 813;  // Standard Yu-Gi-Oh card width
+      canvas.height = 1185; // Standard Yu-Gi-Oh card height
+      
       // Initialize card drawing service
+      console.log('Initializing card drawing service...');
       await this.$cardDrawingService.initialize(canvas);
+      
+      // Mark canvas as ready
       this.canvasInitialized = true;
       this.canvasReady = true;
       
@@ -87,7 +97,16 @@ export default {
       console.log('CardPreview.getCanvas called:', canvas ? 'Canvas found' : 'Canvas not found');
       if (!canvas) {
         console.error('Canvas element not found in CardPreview');
+        return null;
       }
+      
+      // Ensure canvas context is available
+      const ctx = canvas.getContext('2d');
+      if (!ctx) {
+        console.error('Failed to get canvas 2D context');
+        return null;
+      }
+      
       return canvas;
     },
 

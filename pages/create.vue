@@ -117,22 +117,32 @@ export default {
       try {
         console.log('Initializing card in create.vue')
         
+        // Ensure CardPreview component exists
+        if (!this.$refs.cardPreview) {
+          throw new Error('CardPreview component not found')
+        }
+
         // Wait for CardPreview to be ready and get canvas
-        const canvas = await this.$refs.cardPreview?.waitForCanvas()
+        console.log('Waiting for CardPreview canvas...')
+        const canvas = await this.$refs.cardPreview.waitForCanvas()
         console.log('Canvas is ready from CardPreview')
         
         if (!canvas) {
           throw new Error('Canvas not found in CardPreview')
         }
 
+        // Initialize card manager with ready canvas
+        console.log('Initializing CardManager...')
         await this.cardManager.initialize(canvas)
-        console.log('CardManager initialized')
+        console.log('CardManager initialized successfully')
         
+        // Perform initial card draw
+        console.log('Performing initial card draw...')
         await this.drawCard()
-        console.log('Initial card draw completed')
+        console.log('Initial card draw completed successfully')
       } catch (error) {
-        this.handleError(error)
         console.error('Failed to initialize card:', error)
+        this.handleError(error)
       } finally {
         this.closeLoadingDialog()
       }
@@ -151,20 +161,28 @@ export default {
       }
 
       try {
+        // Get canvas from CardPreview
+        console.log('Getting canvas for card draw...')
         const canvas = await this.$refs.cardPreview?.waitForCanvas()
         if (!canvas) {
           throw new Error('Canvas not found in CardPreview')
         }
 
+        // Log card state for debugging
         console.log('Drawing card with state:', {
           cardLang: this.cardState.cardLang,
           cardType: this.cardState.cardType,
           cardSubtype: this.cardState.cardSubtype,
-          hasCardMeta: !!this.cardState.cardMeta
+          hasCardMeta: !!this.cardState.cardMeta,
+          hasCardImage: !!this.cardState.cardImg?.file
         })
+
+        // Generate card
+        console.log('Generating card...')
         await this.cardManager.generateCard(this.cardState)
-        console.log('Card generation completed')
+        console.log('Card generation completed successfully')
       } catch (error) {
+        console.error('Error during card draw:', error)
         this.handleError(error)
       } finally {
         this.closeLoadingDialog()

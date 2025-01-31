@@ -63,7 +63,7 @@ export default class CardManager {
     const templateLang = langStr._templateLang
     console.log('Using template language:', templateLang)
 
-    const cardImgUrl = cardState.cardImg ? URL.createObjectURL(cardState.cardImg) : null
+    const cardImgUrl = cardState.cardImg?.file ? URL.createObjectURL(cardState.cardImg.file) : null
     console.log('Card image URL:', cardImgUrl || 'Using default image')
     
     const imageMap = this.imageUrlService.getImageMap(cardState, templateLang, cardImgUrl)
