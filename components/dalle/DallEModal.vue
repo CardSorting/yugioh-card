@@ -150,6 +150,7 @@ export default {
       }
       
       this.retryCount = 0;
+      this.$store.dispatch('dalle/resetState');
       
       if (this.$refs.form) {
         this.$nextTick(() => {

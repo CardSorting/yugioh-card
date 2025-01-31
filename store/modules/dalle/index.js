@@ -28,6 +28,12 @@ export const mutations = {
 };
 
 export const actions = {
+  resetState({ commit }) {
+    commit('setGenerations', []);
+    commit('setLoading', false);
+    commit('setError', null);
+  },
+
   async fetchGenerations({ commit }, options = {}) {
     try {
       commit('setLoading', true);

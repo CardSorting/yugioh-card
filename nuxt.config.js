@@ -44,7 +44,8 @@ export default {
     '~/plugins/auth',
     '~/plugins/deck-services',
     '~/plugins/card-drawing',
-    '~/plugins/card-image-service'
+    '~/plugins/card-image-service',
+    '~/plugins/dalle'
   ],
 
   // Router middleware
