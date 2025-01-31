@@ -70,7 +70,6 @@ export default {
   data() {
     return {
       pageScrolling: 0,
-      isInitialized: false,
       cardManager: new CardManager(),
       showAuthModal: false
     }
@@ -94,15 +93,11 @@ export default {
 
   async created() {
     await this.resetToDefault()
+    await this.initializeCard()
   },
 
   async mounted() {
     window.addEventListener('scroll', this.onScroll)
-    await this.$nextTick()
-    if (!this.isInitialized) {
-      await this.initializeCard()
-      this.isInitialized = true
-    }
   },
 
   beforeDestroy() {
@@ -150,11 +145,6 @@ export default {
     },
 
     async drawCard() {
-      if (!this.isInitialized) {
-        console.log('Skipping drawCard - not initialized')
-        return;
-      }
-
       if (!this.cardState) {
         console.error('Card state is null')
         return;
