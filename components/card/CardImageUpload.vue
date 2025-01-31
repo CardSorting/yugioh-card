@@ -84,13 +84,34 @@ export default {
       }
     },
 
-    handleDallEImage(file) {
-      this.selectedFile = file;
-      this.SET_CARD_IMAGE(file);
+    async showDallEModal() {
+      try {
+        await this.$showModal('dalle-modal');
+      } catch (error) {
+        console.error('Error showing DallE modal:', error);
+        this.$bvToast?.toast('Error opening AI image generator. Please try again.', {
+          title: 'Error',
+          variant: 'danger',
+          solid: true
+        });
+      }
     },
 
-    showDallEModal() {
-      this.$bvModal.show('dalle-modal');
+    async handleDallEImage(file) {
+      if (!file) return;
+      
+      try {
+        this.selectedFile = file;
+        this.SET_CARD_IMAGE(file);
+        await this.$hideModal('dalle-modal');
+      } catch (error) {
+        console.error('Error handling DallE image:', error);
+        this.$bvToast?.toast('Error processing AI generated image. Please try again.', {
+          title: 'Error',
+          variant: 'danger',
+          solid: true
+        });
+      }
     }
   }
 }

@@ -6,6 +6,8 @@
     hide-footer
     centered
     @hidden="onHide"
+    @show="onShow"
+    ref="modal"
   >
     <DallEForm
       :loading="loading"
@@ -56,12 +58,46 @@ export default {
     })
   },
 
+  created() {
+    // Initialize state
+    this.resetState();
+  },
+
+  mounted() {
+    // Listen for global show event
+    this.showHandler = (modalId) => {
+      if (modalId === 'dalle-modal' && this.$refs.modal) {
+        this.$refs.modal.show();
+      }
+    };
+    this.$root.$on('bv::show::modal', this.showHandler);
+  },
+
+  beforeDestroy() {
+    // Clean up event listeners and state
+    if (this.showHandler) {
+      this.$root.$off('bv::show::modal', this.showHandler);
+    }
+    this.resetState();
+  },
+
   methods: {
     ...mapActions({
       generateImage: 'dalle/generateImage',
       processGeneratedImage: 'dalle/processGeneratedImage',
       resetState: 'dalle/resetState'
     }),
+
+    onShow() {
+      console.log('DallE modal showing');
+      this.resetState();
+      this.retryCount = 0;
+      if (this.$refs.form) {
+        this.$nextTick(() => {
+          this.$refs.form.reset();
+        });
+      }
+    },
 
     async onSubmit(prompt) {
       try {
@@ -77,7 +113,7 @@ export default {
       try {
         const file = await this.processGeneratedImage(this.generatedImage);
         this.$emit('image-selected', file);
-        this.$bvModal.hide('dalle-modal');
+        await this.$hideModal('dalle-modal');
       } catch (error) {
         console.error('Error processing image:', error);
         this.$bvToast.toast('Error saving image. Please try again.', {
@@ -89,12 +125,17 @@ export default {
     },
 
     onHide() {
-      if (!this.loading) {
-        if (this.$refs.form) {
+      if (this.loading) {
+        return;
+      }
+      
+      this.retryCount = 0;
+      this.resetState();
+      
+      if (this.$refs.form) {
+        this.$nextTick(() => {
           this.$refs.form.reset();
-        }
-        this.retryCount = 0;
-        this.resetState();
+        });
       }
     }
   }
