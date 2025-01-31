@@ -1,4 +1,5 @@
 import dalle from './modules/dalle';
+import card from './card';
 
 export const state = () => ({
   loading: false,
@@ -29,9 +30,19 @@ export const actions = {
     setTimeout(() => {
       commit('clearError');
     }, 5000);
+  },
+
+  // Initialize store modules
+  async nuxtServerInit({ dispatch }) {
+    try {
+      await dispatch('card/resetToDefault');
+    } catch (error) {
+      console.error('Error initializing store:', error);
+    }
   }
 };
 
 export const modules = {
-  dalle
+  dalle,
+  card
 };

@@ -12,7 +12,11 @@
 </template>
 
 <script>
-import PreviewEffectsService from '~/services/previewEffectsService'
+import PreviewEffectsService from '~/services/previewEffectsService';
+import { canvasManager } from '~/services/card/canvas/CanvasManager';
+import { imageLoader } from '~/services/card/resources/ImageLoader';
+import { cardRendererFactory } from '~/services/card/rendering/CardRendererFactory';
+import { mapState } from 'vuex';
 
 export default {
   name: 'CardPreview',
@@ -22,11 +26,17 @@ export default {
       effectsService: null,
       canvasInitialized: false,
       canvasReady: false,
-      initializationPromise: null
+      initializationPromise: null,
+      _resolveCanvas: null,
+      _rejectCanvas: null
     }
   },
 
   computed: {
+    ...mapState({
+      cardState: state => state.card
+    }),
+    
     transformStyle() {
       return this.effectsService?.getTransformStyle() || {}
     }
@@ -55,14 +65,13 @@ export default {
         throw new Error('Canvas element not found');
       }
 
-      // Set canvas dimensions
-      console.log('Setting canvas dimensions...');
-      canvas.width = 813;  // Standard Yu-Gi-Oh card width
-      canvas.height = 1185; // Standard Yu-Gi-Oh card height
-      
-      // Initialize card drawing service
-      console.log('Initializing card drawing service...');
-      await this.$cardDrawingService.initialize(canvas);
+      // Initialize canvas manager
+      console.log('Initializing canvas manager...');
+      await canvasManager.initialize(canvas, {
+        width: 1000,
+        height: 1450,
+        contextType: '2d'
+      });
       
       // Mark canvas as ready
       this.canvasInitialized = true;
@@ -83,6 +92,49 @@ export default {
     }
   },
 
+  watch: {
+    cardState: {
+      deep: true,
+      async handler(newState) {
+        if (!this.canvasReady || !newState) return;
+        
+        try {
+          // Get canvas and context
+          const canvas = canvasManager.getCanvas();
+          const ctx = canvasManager.getContext();
+          if (!canvas || !ctx) {
+            throw new Error('Canvas not properly initialized');
+          }
+
+          // Load images
+          const imageMap = this.$imageUrlService.getImageMap(newState, newState.cardMeta[newState.cardLang]._templateLang);
+          const images = await imageLoader.loadImages(imageMap);
+
+          // Load fonts
+          const fonts = [
+            'MatrixBoldSmallCaps',
+            ...newState.cardMeta[newState.cardLang]._fontName,
+            'cardkey',
+            'link'
+          ];
+          await imageLoader.preloadFonts(fonts);
+
+          // Get appropriate renderer and render card
+          const renderer = cardRendererFactory.createRenderer(newState);
+          await renderer.render(newState, {
+            canvas,
+            context: ctx,
+            images,
+            fonts
+          });
+        } catch (error) {
+          console.error('Error rendering card:', error);
+          this.$store.commit('setError', 'Failed to render card');
+        }
+      }
+    }
+  },
+
   methods: {
     move(e) {
       this.effectsService?.handleMouseMove(e)
@@ -100,13 +152,6 @@ export default {
         return null;
       }
       
-      // Ensure canvas context is available
-      const ctx = canvas.getContext('2d');
-      if (!ctx) {
-        console.error('Failed to get canvas 2D context');
-        return null;
-      }
-      
       return canvas;
     },
 
@@ -119,23 +164,6 @@ export default {
       } catch (error) {
         console.error('Error waiting for canvas:', error);
         throw error;
-      }
-    },
-
-    async reinitializeCanvas() {
-      try {
-        const canvas = this.getCanvas()
-        if (!canvas) {
-          throw new Error('Canvas element not found')
-        }
-        
-        await this.$cardDrawingService.initialize(canvas)
-        this.canvasInitialized = true
-        
-        console.log('Canvas reinitialization complete')
-      } catch (error) {
-        console.error('Error reinitializing canvas:', error)
-        this.$store.commit('setError', 'Failed to reinitialize card preview')
       }
     }
   }

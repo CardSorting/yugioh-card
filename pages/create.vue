@@ -134,87 +134,48 @@ export default {
     }),
 
     async initializeCard() {
-      if (!this.auth.isAuthenticated.value) {
-        this.showAuthModal = true;
-        return;
+    if (!this.auth.isAuthenticated.value) {
+      this.showAuthModal = true;
+      return;
+    }
+
+    this.fireLoadingDialog();
+    this.clearError();
+    try {
+      console.log('Initializing card in create.vue');
+      
+      // Ensure CardPreview component exists
+      if (!this.$refs.cardPreview) {
+        throw new Error('CardPreview component not found');
       }
 
-      this.fireLoadingDialog();
-      this.clearError();
-      try {
-        console.log('Initializing card in create.vue');
-        
-        // Ensure CardPreview component exists
-        if (!this.$refs.cardPreview) {
-          throw new Error('CardPreview component not found');
-        }
+      // Wait for CardPreview to be ready
+      console.log('Waiting for CardPreview canvas...');
+      await this.$refs.cardPreview.waitForCanvas();
+      console.log('Canvas is ready from CardPreview');
 
-        // Wait for CardPreview to be ready and get canvas
-        console.log('Waiting for CardPreview canvas...');
-        const canvas = await this.$refs.cardPreview.waitForCanvas();
-        console.log('Canvas is ready from CardPreview');
-        
-        if (!canvas) {
-          throw new Error('Canvas not found in CardPreview');
-        }
+      // Card will be automatically rendered by the CardPreview watcher
+      // when cardState changes or after initialization
+      
+    } catch (error) {
+      console.error('Failed to initialize card:', error);
+      this.handleError(error);
+    } finally {
+      this.closeLoadingDialog();
+    }
+  },
 
-        // Initialize card manager with ready canvas
-        console.log('Initializing CardManager...');
-        await this.cardManager.initialize(canvas);
-        console.log('CardManager initialized successfully');
-        
-        // Perform initial card draw
-        console.log('Performing initial card draw...');
-        await this.drawCard();
-        console.log('Initial card draw completed successfully');
-      } catch (error) {
-        console.error('Failed to initialize card:', error);
-        this.handleError(error);
-      } finally {
-        this.closeLoadingDialog();
-      }
-    },
-
-    generateCard() {
-      this.fireLoadingDialog()
-      this.clearError()
-      this.drawCard()
-    },
-
-    async drawCard() {
-      if (!this.cardState) {
-        console.error('Card state is null')
-        return;
-      }
-
-      try {
-        // Get canvas from CardPreview
-        console.log('Getting canvas for card draw...')
-        const canvas = await this.$refs.cardPreview?.waitForCanvas()
-        if (!canvas) {
-          throw new Error('Canvas not found in CardPreview')
-        }
-
-        // Log card state for debugging
-        console.log('Drawing card with state:', {
-          cardLang: this.cardState.cardLang,
-          cardType: this.cardState.cardType,
-          cardSubtype: this.cardState.cardSubtype,
-          hasCardMeta: !!this.cardState.cardMeta,
-          hasCardImage: !!this.cardState.cardImg?.file
-        })
-
-        // Generate card
-        console.log('Generating card...')
-        await this.cardManager.generateCard(this.cardState)
-        console.log('Card generation completed successfully')
-      } catch (error) {
-        console.error('Error during card draw:', error)
-        this.handleError(error)
-      } finally {
-        this.closeLoadingDialog()
-      }
-    },
+  generateCard() {
+    // Card will be automatically re-rendered by the CardPreview watcher
+    // when cardState changes
+    this.fireLoadingDialog();
+    this.clearError();
+    
+    // Force a cardState update to trigger re-render
+    this.$store.commit('card/TRIGGER_REDRAW');
+    
+    this.closeLoadingDialog();
+  },
 
     async downloadCard() {
       try {

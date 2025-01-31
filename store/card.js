@@ -237,6 +237,11 @@ export const mutations = {
     state.cardPendulumInfo = data.pendulumText
     state.pendulumSize = data.pSize
     return true
+  },
+
+  // Force a re-render by creating a new object reference
+  TRIGGER_REDRAW(state) {
+    state.cardImg = { ...state.cardImg };
   }
 }
 
