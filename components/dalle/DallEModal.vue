@@ -32,7 +32,7 @@
 </template>
 
 <script>
-import { mapState, mapActions } from 'vuex';
+import { mapState, mapActions, mapGetters } from 'vuex';
 import DallEForm from './DallEForm.vue';
 import DallEPreview from './DallEPreview.vue';
 
@@ -58,16 +58,11 @@ export default {
     ...mapState('dalle', ['generations']),
     ...mapGetters('dalle', ['unusedGenerations']),
     currentGeneration() {
-      return this.generations[0];
+      return this.generations?.[0] || null;
     },
     generatedImage() {
-      return this.currentGeneration?.base64Data;
+      return this.currentGeneration?.base64Data || null;
     }
-  },
-
-  created() {
-    // Initialize state
-    this.resetState();
   },
 
   mounted() {
@@ -81,11 +76,10 @@ export default {
   },
 
   beforeDestroy() {
-    // Clean up event listeners and state
+    // Clean up event listeners
     if (this.showHandler) {
       this.$root.$off('bv::show::modal', this.showHandler);
     }
-    this.resetState();
   },
 
   methods: {
@@ -99,8 +93,12 @@ export default {
       console.log('DallE modal showing');
       this.retryCount = 0;
       
-      // Load any unused generations
-      await this.fetchGenerations({ unusedOnly: true, limit: 10 });
+      try {
+        // Load any unused generations
+        await this.fetchGenerations({ unusedOnly: true, limit: 10 });
+      } catch (error) {
+        console.error('Error fetching generations:', error);
+      }
       
       if (this.$refs.form) {
         this.$nextTick(() => {
@@ -139,7 +137,7 @@ export default {
         await this.$bvModal.hide('dalle-modal');
       } catch (error) {
         console.error('Error processing image:', error);
-        this.$bvToast.toast('Error saving image. Please try again.', {
+        this.$bvToast?.toast('Error saving image. Please try again.', {
           title: 'Error',
           variant: 'danger',
           solid: true
