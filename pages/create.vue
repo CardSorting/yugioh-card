@@ -120,9 +120,21 @@ export default {
       this.fireLoadingDialog()
       this.clearError()
       try {
+        console.log('Initializing card in create.vue')
         const canvas = this.$refs.cardPreview?.getCanvas()
-        this.cardManager.initialize(canvas)
+        console.log('Got canvas from CardPreview:', canvas ? 'Canvas found' : 'Canvas not found')
+        
+        if (!canvas) {
+          throw new Error('Canvas not found in CardPreview')
+        }
+
+        await this.cardManager.initialize(canvas)
+        console.log('CardManager initialized')
+        
+        // Wait for next tick to ensure DOM is updated
+        await this.$nextTick()
         await this.drawCard()
+        console.log('Initial card draw completed')
       } catch (error) {
         this.handleError(error)
         console.error('Failed to initialize card:', error)
@@ -138,10 +150,30 @@ export default {
     },
 
     async drawCard() {
-      if (!this.isInitialized) return;
+      if (!this.isInitialized) {
+        console.log('Skipping drawCard - not initialized')
+        return;
+      }
+
+      if (!this.cardState) {
+        console.error('Card state is null')
+        return;
+      }
+
+      if (!this.$refs.cardPreview?.getCanvas()) {
+        console.error('Canvas not found in CardPreview')
+        return;
+      }
       
       try {
+        console.log('Drawing card with state:', {
+          cardLang: this.cardState.cardLang,
+          cardType: this.cardState.cardType,
+          cardSubtype: this.cardState.cardSubtype,
+          hasCardMeta: !!this.cardState.cardMeta
+        })
         await this.cardManager.generateCard(this.cardState)
+        console.log('Card generation completed')
       } catch (error) {
         this.handleError(error)
       } finally {

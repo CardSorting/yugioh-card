@@ -14,7 +14,17 @@ export default {
       { hid: 'description', name: 'description', content: 'Create Yu-Gi-Oh! cards online' }
     ],
     link: [
-      { rel: 'icon', type: 'image/x-icon', href: '/favicon.ico' }
+      { rel: 'icon', type: 'image/x-icon', href: '/favicon.ico' },
+      { rel: 'preload', as: 'font', type: 'font/ttf', href: '/fonts/MatrixBoldSmallCaps.ttf', crossorigin: true },
+      { rel: 'preload', as: 'font', type: 'font/ttf', href: '/fonts/zh.ttf', crossorigin: true },
+      { rel: 'preload', as: 'font', type: 'font/ttf', href: '/fonts/cn.ttf', crossorigin: true },
+      { rel: 'preload', as: 'font', type: 'font/ttf', href: '/fonts/jp.ttf', crossorigin: true },
+      { rel: 'preload', as: 'font', type: 'font/otf', href: '/fonts/jp2.otf', crossorigin: true },
+      { rel: 'preload', as: 'font', type: 'font/ttf', href: '/fonts/en.ttf', crossorigin: true },
+      { rel: 'preload', as: 'font', type: 'font/ttf', href: '/fonts/en2.ttf', crossorigin: true },
+      { rel: 'preload', as: 'font', type: 'font/ttf', href: '/fonts/en3.ttf', crossorigin: true },
+      { rel: 'preload', as: 'font', type: 'font/ttf', href: '/fonts/link.ttf', crossorigin: true },
+      { rel: 'preload', as: 'font', type: 'font/ttf', href: '/fonts/cardkey.ttf', crossorigin: true }
     ]
   },
 

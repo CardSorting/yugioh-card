@@ -6,18 +6,78 @@ export class CardDrawingService {
     this.fontName = null
   }
 
-  initialize(canvas) {
-    this.canvas = canvas
-    this.ctx = canvas.getContext('2d')
-    this.canvas.width = 1000
-    this.canvas.height = 1450
+  async preloadFonts() {
+    console.log('Preloading fonts...')
+    const fonts = [
+      'MatrixBoldSmallCaps',
+      'zh',
+      'cn',
+      'jp',
+      'jp2',
+      'en',
+      'en2',
+      'en3',
+      'link',
+      'cardkey'
+    ]
+
+    try {
+      await Promise.all(fonts.map(font => 
+        document.fonts.load(`16px "${font}"`)
+      ))
+      console.log('All fonts preloaded successfully')
+    } catch (error) {
+      console.error('Error preloading fonts:', error)
+      throw new Error('Failed to preload required fonts')
+    }
+  }
+
+  async initialize(canvas) {
+    console.log('Initializing cardDrawingService')
+    if (!canvas) {
+      console.error('Canvas is null in cardDrawingService.initialize')
+      throw new Error('Canvas is required for initialization')
+    }
+
+    // Preload fonts before initializing canvas
+    await this.preloadFonts()
+    
+    try {
+      this.canvas = canvas
+      this.ctx = canvas.getContext('2d')
+      if (!this.ctx) {
+        throw new Error('Failed to get 2D context from canvas')
+      }
+      
+      // Set canvas dimensions
+      this.canvas.width = 1000
+      this.canvas.height = 1450
+      
+      // Test context by drawing a pixel
+      this.ctx.fillStyle = '#000000'
+      this.ctx.fillRect(0, 0, 1, 1)
+      this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height)
+      
+      console.log('Canvas initialized with dimensions:', this.canvas.width, 'x', this.canvas.height)
+      console.log('Canvas context properties:', {
+        fillStyle: this.ctx.fillStyle,
+        font: this.ctx.font,
+        textAlign: this.ctx.textAlign,
+        textBaseline: this.ctx.textBaseline
+      })
+    } catch (error) {
+      console.error('Failed to initialize canvas context:', error)
+      throw new Error(`Canvas context initialization failed: ${error.message}`)
+    }
   }
 
   async loadImages(imageMap) {
+    console.log('Loading images with map:', imageMap)
     this.imgs = {}
     const promises = []
     
     for (const [key, url] of Object.entries(imageMap)) {
+      console.log(`Loading image for ${key} from ${url}`)
       promises.push(
         new Promise((resolve, reject) => {
           const image = new Image()
@@ -26,8 +86,10 @@ export class CardDrawingService {
             resolve()
           }
           image.onerror = () => {
-            console.error(`Failed to load image: ${url}`)
-            reject(new Error(`Failed to load image: ${url}`))
+            const error = new Error(`Failed to load image: ${url}`)
+            console.error(error)
+            console.error('Image load error details:', { key, url })
+            reject(error)
           }
           image.src = url
         }).catch(error => {
@@ -44,11 +106,44 @@ export class CardDrawingService {
     await Promise.all(promises)
   }
 
-  drawCard(cardData, langStr) {
-    if (!this.canvas || !this.ctx) return
+  async checkFontsLoaded(fontNames) {
+    console.log('Checking fonts:', fontNames)
+    try {
+      await Promise.all(fontNames.map(font => 
+        document.fonts.load(`16px "${font}"`)
+      ))
+      console.log('All fonts loaded successfully')
+      return true
+    } catch (error) {
+      console.error('Error loading fonts:', error)
+      return false
+    }
+  }
+
+  async drawCard(cardData, langStr) {
+    console.log('Drawing card with data:', { cardData, langStr })
+    if (!this.canvas || !this.ctx) {
+      console.error('Canvas or context is null in drawCard')
+      return
+    }
 
     const offset = langStr._offset
     this.fontName = langStr._fontName
+    console.log('Using font:', this.fontName)
+
+    // Check if required fonts are loaded
+    const requiredFonts = [
+      'MatrixBoldSmallCaps',
+      ...this.fontName,
+      'cardkey',
+      'link'
+    ]
+    
+    const fontsLoaded = await this.checkFontsLoaded(requiredFonts)
+    if (!fontsLoaded) {
+      console.error('Required fonts not loaded')
+      throw new Error('Required fonts not loaded')
+    }
 
     // Draw base image
     this.drawCardBase(cardData)

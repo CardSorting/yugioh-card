@@ -30,6 +30,7 @@ export default {
   },
 
   mounted() {
+    console.log('CardPreview mounted, initializing effects service')
     this.effectsService = new PreviewEffectsService(this.$refs["yugiohcard-wrap"])
   },
 
@@ -43,7 +44,9 @@ export default {
     },
 
     getCanvas() {
-      return this.$refs.yugiohcard
+      const canvas = this.$refs.yugiohcard
+      console.log('CardPreview.getCanvas called:', canvas ? 'Canvas found' : 'Canvas not found')
+      return canvas
     }
   }
 }
