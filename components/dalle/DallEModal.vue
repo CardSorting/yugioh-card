@@ -53,9 +53,16 @@ export default {
   computed: {
     ...mapState({
       loading: state => state.dalle.loading,
-      error: state => state.dalle.error,
-      generatedImage: state => state.dalle.generatedImage
-    })
+      error: state => state.dalle.error
+    }),
+    ...mapState('dalle', ['generations']),
+    ...mapGetters('dalle', ['unusedGenerations']),
+    currentGeneration() {
+      return this.generations[0];
+    },
+    generatedImage() {
+      return this.currentGeneration?.base64Data;
+    }
   },
 
   created() {
@@ -84,14 +91,17 @@ export default {
   methods: {
     ...mapActions({
       generateImage: 'dalle/generateImage',
-      processGeneratedImage: 'dalle/processGeneratedImage',
-      resetState: 'dalle/resetState'
+      markAsUsed: 'dalle/markAsUsed',
+      fetchGenerations: 'dalle/fetchGenerations'
     }),
 
-    onShow() {
+    async onShow() {
       console.log('DallE modal showing');
-      this.resetState();
       this.retryCount = 0;
+      
+      // Load any unused generations
+      await this.fetchGenerations({ unusedOnly: true, limit: 10 });
+      
       if (this.$refs.form) {
         this.$nextTick(() => {
           this.$refs.form.reset();
@@ -111,9 +121,22 @@ export default {
 
     async selectImage() {
       try {
-        const file = await this.processGeneratedImage(this.generatedImage);
-        this.$emit('image-selected', file);
-        await this.$hideModal('dalle-modal');
+        if (!this.currentGeneration) {
+          throw new Error('No image generated');
+        }
+
+        // Process the image and emit it
+        const file = await this.$dalleImageAdapter.processForCardMaker(
+          this.currentGeneration,
+          null // cardId will be set when the card is saved
+        );
+        
+        this.$emit('image-selected', {
+          file,
+          generation: this.currentGeneration
+        });
+        
+        await this.$bvModal.hide('dalle-modal');
       } catch (error) {
         console.error('Error processing image:', error);
         this.$bvToast.toast('Error saving image. Please try again.', {
@@ -130,7 +153,6 @@ export default {
       }
       
       this.retryCount = 0;
-      this.resetState();
       
       if (this.$refs.form) {
         this.$nextTick(() => {

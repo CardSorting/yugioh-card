@@ -251,6 +251,15 @@ export default {
         
         // Save card data and image
         const savedCard = await CardStorageService.saveCard(this.$store.state.card, blob)
+
+        // If this card uses a DALL-E generation, mark it as used
+        const cardImage = this.$store.state.card.cardImg
+        if (cardImage?.generation?.id) {
+          await this.$store.dispatch('dalle/markAsUsed', {
+            generationId: cardImage.generation.id,
+            cardId: savedCard.cardId
+          })
+        }
         
         // Play success sound
         soundManager.play('cardTransfer')

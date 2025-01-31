@@ -36,6 +36,20 @@ class CardStorageService {
 
       if (dbError) throw dbError
 
+      // If this card uses a DALL-E generation, mark it as used
+      if (cardData.cardImg?.generation?.id) {
+        const { error: dalleError } = await supabase
+          .from('dalle_generations')
+          .update({ used_in_card: cardId })
+          .eq('id', cardData.cardImg.generation.id)
+          .eq('user_id', user.id)
+
+        if (dalleError) {
+          console.error('Error updating DALL-E generation:', dalleError)
+          // Don't throw error here, as the card was saved successfully
+        }
+      }
+
       return { cardId, imageUrl: publicUrl }
     } catch (error) {
       console.error('Error saving card:', error)
@@ -77,6 +91,20 @@ class CardStorageService {
 
       if (dbError) throw dbError
 
+      // If this card uses a DALL-E generation, mark it as used
+      if (cardData.cardImg?.generation?.id) {
+        const { error: dalleError } = await supabase
+          .from('dalle_generations')
+          .update({ used_in_card: cardId })
+          .eq('id', cardData.cardImg.generation.id)
+          .eq('user_id', user.id)
+
+        if (dalleError) {
+          console.error('Error updating DALL-E generation:', dalleError)
+          // Don't throw error here, as the card was updated successfully
+        }
+      }
+
       return { cardId, imageUrl: publicUrl }
     } catch (error) {
       console.error('Error updating card:', error)
@@ -96,6 +124,16 @@ class CardStorageService {
 
       if (storageError) throw storageError
 
+      // Get card data to check for DALL-E generation
+      const { data: cardData, error: fetchError } = await supabase
+        .from('saved_cards')
+        .select('card_data')
+        .eq('id', cardId)
+        .eq('user_id', user.id)
+        .single()
+
+      if (fetchError) throw fetchError
+
       // Delete card data from database
       const { error: dbError } = await supabase
         .from('saved_cards')
@@ -104,6 +142,20 @@ class CardStorageService {
         .eq('user_id', user.id)
 
       if (dbError) throw dbError
+
+      // If this card used a DALL-E generation, clear the used_in_card reference
+      if (cardData.card_data.cardImg?.generation?.id) {
+        const { error: dalleError } = await supabase
+          .from('dalle_generations')
+          .update({ used_in_card: null })
+          .eq('id', cardData.card_data.cardImg.generation.id)
+          .eq('user_id', user.id)
+
+        if (dalleError) {
+          console.error('Error updating DALL-E generation:', dalleError)
+          // Don't throw error here, as the card was deleted successfully
+        }
+      }
     } catch (error) {
       console.error('Error deleting card:', error)
       throw error

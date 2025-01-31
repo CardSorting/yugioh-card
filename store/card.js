@@ -16,7 +16,10 @@ export const state = () => ({
   cardLoadYgoProEnabled: true,
   cardKey: '',
   cardTitle: '',
-  cardImg: null,
+  cardImg: {
+    file: null,
+    generation: null
+  },
 
   // Card Type Info
   cardType: 'Monster',
@@ -70,8 +73,11 @@ export const mutations = {
       this.commit('card/RESET_TO_DEFAULT')
     }
   },
-  SET_CARD_IMAGE(state, image) {
-    state.cardImg = image
+  SET_CARD_IMAGE(state, { file, generation = null }) {
+    state.cardImg = {
+      file: file,
+      generation: generation
+    }
   },
   SET_CARD_TYPE(state, type) {
     state.cardType = type
@@ -165,7 +171,10 @@ export const mutations = {
     state.cardLoadYgoProEnabled = true
     state.cardKey = ''
     state.cardTitle = data.title
-    state.cardImg = null
+    state.cardImg = {
+      file: null,
+      generation: null
+    }
     state.cardType = 'Monster'
     state.cardSubtype = 'Normal'
     state.cardAttr = 'LIGHT'
@@ -199,7 +208,10 @@ export const mutations = {
     const colorRegex = /^#[0-9A-Fa-f]{6}$/
     state.titleColor = data.color && colorRegex.test(data.color) ? data.color : '#000000'
     state.cardTitle = data.title
-    state.cardImg = null
+    state.cardImg = {
+      file: null,
+      generation: null
+    }
     state.cardType = data.type[0]
     state.cardSubtype = data.type[1]
     if (data.attribute !== 'Trap' && data.attribute !== 'Spell') {

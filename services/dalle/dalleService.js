@@ -1,3 +1,6 @@
+import { createClient } from '@supabase/supabase-js';
+import dalleStorageService from './dalleStorageService';
+
 /**
  * Service for handling DALL-E and GPT-4 Vision API interactions
  */
@@ -6,12 +9,16 @@ export class DalleService {
     this.apiKey = apiKey;
     this.dalleEndpoint = 'https://api.openai.com/v1/images/generations';
     this.chatEndpoint = 'https://api.openai.com/v1/chat/completions';
+    this.supabase = createClient(
+      process.env.SUPABASE_URL,
+      process.env.SUPABASE_ANON_KEY
+    );
   }
 
   /**
-   * Generate an image using DALL-E API
+   * Generate an image using DALL-E API and save it
    * @param {string} prompt - The image description
-   * @returns {Promise<string>} The generated image URL
+   * @returns {Promise<Object>} The generation record including the image URL
    */
   async generateImage(prompt) {
     if (!prompt) {
@@ -19,6 +26,11 @@ export class DalleService {
     }
 
     try {
+      // Get current user
+      const { data: { user }, error: userError } = await this.supabase.auth.getUser();
+      if (userError) throw new Error('User not authenticated');
+
+      // Generate image
       const response = await fetch(this.dalleEndpoint, {
         method: 'POST',
         headers: {
@@ -45,11 +57,43 @@ export class DalleService {
         throw new Error('No image data in response');
       }
 
-      return `data:image/png;base64,${data.data[0].b64_json}`;
+      const base64Data = `data:image/png;base64,${data.data[0].b64_json}`;
+
+      // Save generation
+      const savedGeneration = await dalleStorageService.saveGeneration(
+        base64Data,
+        prompt,
+        user.id
+      );
+
+      return {
+        ...savedGeneration,
+        base64Data // Include base64 data for immediate use
+      };
     } catch (error) {
       console.error('DALL-E API error:', error);
       throw error;
     }
+  }
+
+  /**
+   * Mark a generation as used in a card
+   * @param {string} generationId - The generation's ID
+   * @param {string} cardId - The card's ID
+   */
+  async markGenerationAsUsed(generationId, cardId) {
+    return dalleStorageService.markAsUsed(generationId, cardId);
+  }
+
+  /**
+   * Get user's DALL-E generations
+   * @param {Object} options - Query options
+   */
+  async getUserGenerations(options) {
+    const { data: { user }, error: userError } = await this.supabase.auth.getUser();
+    if (userError) throw new Error('User not authenticated');
+
+    return dalleStorageService.getUserGenerations(user.id, options);
   }
 
   /**

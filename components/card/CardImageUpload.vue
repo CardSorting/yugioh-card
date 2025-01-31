@@ -97,12 +97,16 @@ export default {
       }
     },
 
-    async handleDallEImage(file) {
+    async handleDallEImage({ file, generation }) {
       if (!file) return;
       
       try {
         this.selectedFile = file;
-        this.SET_CARD_IMAGE(file);
+        // Store both the file and the generation data
+        this.SET_CARD_IMAGE({
+          file,
+          generation // This will be used when saving the card
+        });
         await this.$hideModal('dalle-modal');
       } catch (error) {
         console.error('Error handling DallE image:', error);

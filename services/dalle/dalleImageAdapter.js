@@ -1,5 +1,6 @@
 import { DALLE_CONSTANTS } from './types';
 import supabaseStorageService from '../storage/supabaseService';
+import dalleService from './dalleService';
 
 /**
  * Adapter for handling DALL-E image conversions and processing
@@ -74,21 +75,30 @@ export class DalleImageAdapter {
 
   /**
    * Process an image from DALL-E for use in the card maker
-   * @param {string} base64Data - The DALL-E generated image as base64 data
+   * @param {Object} generation - The DALL-E generation record
+   * @param {string} cardId - The ID of the card being created
    * @returns {Promise<File>} A processed image file ready for use
    */
-  async processForCardMaker(base64Data) {
-    // Convert base64 data to File
-    const file = await this.base64ToFile(base64Data);
-    await this.validateImage(file);
+  async processForCardMaker(generation, cardId) {
+    try {
+      // Convert base64 data to File
+      const file = await this.base64ToFile(generation.base64Data);
+      await this.validateImage(file);
 
-    // Upload to storage and get permanent URL
-    const publicUrl = await this.uploadToStorage(file);
-    
-    // Create new File with public URL
-    const response = await fetch(publicUrl);
-    const blob = await response.blob();
-    return new File([blob], file.name, { type: file.type });
+      // Upload to storage and get permanent URL
+      const publicUrl = await this.uploadToStorage(file);
+      
+      // Mark the generation as used in this card
+      await dalleService.markGenerationAsUsed(generation.id, cardId);
+      
+      // Create new File with public URL
+      const response = await fetch(publicUrl);
+      const blob = await response.blob();
+      return new File([blob], file.name, { type: file.type });
+    } catch (error) {
+      console.error('Error processing image for card:', error);
+      throw new Error('Failed to process image for card');
+    }
   }
 }
 
