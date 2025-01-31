@@ -13,7 +13,14 @@ export class DalleImageAdapter {
    */
   async urlToFile(imageUrl, filename = DALLE_CONSTANTS.DEFAULT_FILENAME) {
     try {
-      const response = await fetch(imageUrl);
+      // Use proxy endpoint to avoid CORS issues
+      const proxyUrl = `/api/dalle/proxy?url=${encodeURIComponent(imageUrl)}`;
+      const response = await fetch(proxyUrl);
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      
       const blob = await response.blob();
       return new File([blob], filename, { type: DALLE_CONSTANTS.MIME_TYPE });
     } catch (error) {

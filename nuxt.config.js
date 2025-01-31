@@ -42,7 +42,8 @@ export default {
     '~/plugins/font-awesome',
     '~/plugins/regenerator',
     '~/plugins/auth',
-    '~/plugins/deck-services'
+    '~/plugins/deck-services',
+    '~/plugins/card-drawing'
   ],
 
   // Router middleware
@@ -186,6 +187,7 @@ export default {
 
   // Server middleware for API routes
   serverMiddleware: [
-    { path: '/api/dalle', handler: '~/api/dalle/generate.js' }
+    { path: '/api/dalle', handler: '~/api/dalle/generate.js' },
+    { path: '/api/dalle/proxy', handler: '~/api/dalle/proxy.js' }
   ]
 }

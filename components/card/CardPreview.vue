@@ -19,7 +19,8 @@ export default {
   
   data() {
     return {
-      effectsService: null
+      effectsService: null,
+      canvasInitialized: false
     }
   },
 
@@ -29,9 +30,28 @@ export default {
     }
   },
 
-  mounted() {
-    console.log('CardPreview mounted, initializing effects service')
-    this.effectsService = new PreviewEffectsService(this.$refs["yugiohcard-wrap"])
+  async mounted() {
+    try {
+      console.log('CardPreview mounted, initializing services')
+      
+      // Initialize effects service
+      this.effectsService = new PreviewEffectsService(this.$refs["yugiohcard-wrap"])
+      
+      // Initialize canvas
+      const canvas = this.getCanvas()
+      if (!canvas) {
+        throw new Error('Canvas element not found')
+      }
+
+      // Initialize card drawing service
+      await this.$cardDrawingService.initialize(canvas)
+      this.canvasInitialized = true
+      
+      console.log('CardPreview initialization complete')
+    } catch (error) {
+      console.error('Error initializing CardPreview:', error)
+      this.$store.commit('setError', 'Failed to initialize card preview')
+    }
   },
 
   methods: {
@@ -46,7 +66,27 @@ export default {
     getCanvas() {
       const canvas = this.$refs.yugiohcard
       console.log('CardPreview.getCanvas called:', canvas ? 'Canvas found' : 'Canvas not found')
+      if (!canvas) {
+        console.error('Canvas element not found in CardPreview')
+      }
       return canvas
+    },
+
+    async reinitializeCanvas() {
+      try {
+        const canvas = this.getCanvas()
+        if (!canvas) {
+          throw new Error('Canvas element not found')
+        }
+        
+        await this.$cardDrawingService.initialize(canvas)
+        this.canvasInitialized = true
+        
+        console.log('Canvas reinitialization complete')
+      } catch (error) {
+        console.error('Error reinitializing canvas:', error)
+        this.$store.commit('setError', 'Failed to reinitialize card preview')
+      }
     }
   }
 }
